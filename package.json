@@ -1,0 +1,12 @@
+{
+  "name": "bussola-de-valores",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Questionário que mostra onde você está em quatro eixos políticos, sem coletar dados.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "build": "node scripts/build.mjs",
+    "dev": "node scripts/build.mjs && npx --yes serve dist"
+  }
+}

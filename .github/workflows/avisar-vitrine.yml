@@ -1,0 +1,35 @@
+name: Avisar a Vitrine
+
+# Quando o app muda no main, registra a novidade na Vitrine (https://newtonsanches.github.io).
+# A versão é a data (AAAA.MM.DD, horário de Brasília); mudanças do mesmo dia entram juntas.
+# A novidade é a primeira linha da mensagem do commit. Para não avisar, ponha [skip vitrine] na mensagem.
+# Precisa do segredo VITRINE_TOKEN neste repositório (token com Contents: Read and write
+# no repositório newtonsanches.github.io). Sem ele, este workflow só deixa um aviso e termina.
+on:
+  push:
+    branches: [main]
+    paths: ["src/**", "public/**", "index.html"]
+
+jobs:
+  avisar:
+    if: ${{ !contains(github.event.head_commit.message, '[skip vitrine]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Avisar a Vitrine
+        env:
+          GH_TOKEN: ${{ secrets.VITRINE_TOKEN }}
+          MENSAGEM: ${{ github.event.head_commit.message }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::warning::Segredo VITRINE_TOKEN ausente: a Vitrine não foi avisada."
+            exit 0
+          fi
+          versao="$(TZ=America/Sao_Paulo date +%Y.%m.%d)"
+          nota="$(printf '%s' "$MENSAGEM" | head -n1)"
+          payload=$(jq -n --arg v "$versao" --arg n "$nota" --arg w "https://newtonsanches.github.io/bussola-de-valores/" \
+            '{event_type: "nova-versao", client_payload: {id: "bussola-de-valores", versao: $v, notas: $n, web: $w}}')
+          codigo=$(curl -s -o resposta.txt -w "%{http_code}" -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/newtonsanches/newtonsanches.github.io/dispatches -d "$payload")
+          echo "Vitrine: HTTP $codigo"; cat resposta.txt
+          [ "$codigo" = "204" ] || { echo "::error::A Vitrine não aceitou o aviso (HTTP $codigo)."; exit 1; }

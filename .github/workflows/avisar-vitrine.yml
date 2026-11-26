@@ -6,6 +6,7 @@ name: Avisar a Vitrine
 # Precisa do segredo VITRINE_TOKEN neste repositório (token com Contents: Read and write
 # no repositório newtonsanches.github.io). Sem ele, este workflow só deixa um aviso e termina.
 on:
+  workflow_dispatch:   # botão "Run workflow": só testa o token, sem registrar versão
   push:
     branches: [main]
     paths: ["src/**", "public/**", "index.html"]
@@ -24,10 +25,14 @@ jobs:
             echo "::warning::Segredo VITRINE_TOKEN ausente: a Vitrine não foi avisada."
             exit 0
           fi
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            payload='{"event_type":"nova-versao","client_payload":{}}'
+          else
           versao="$(TZ=America/Sao_Paulo date +%Y.%m.%d)"
           nota="$(printf '%s' "$MENSAGEM" | head -n1)"
           payload=$(jq -n --arg v "$versao" --arg n "$nota" --arg w "https://newtonsanches.github.io/bussola-de-valores/" \
             '{event_type: "nova-versao", client_payload: {id: "bussola-de-valores", versao: $v, notas: $n, web: $w}}')
+          fi
           codigo=$(curl -s -o resposta.txt -w "%{http_code}" -X POST \
             -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
             https://api.github.com/repos/newtonsanches/newtonsanches.github.io/dispatches -d "$payload")
